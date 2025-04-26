@@ -8,7 +8,7 @@ import cv2
 from pathlib import Path
 import pandas as pd
 
-from helpers import Colmap, Roboflow, Triangulation
+from helpers import Colmap, Roboflow, Triangulation, Pic
 
 current_file_dir = Path(__file__).resolve().parent
 project_dir = current_file_dir
@@ -38,9 +38,28 @@ for image_name, boxes in all_detections.items():
 colmap.run_model_converter()
 colmap.plot_pointcloud_better()
  """
+triangulation = Triangulation()
+
+os.makedirs(os.path.join(project_dir, "data", "dev_data_test"), exist_ok=True)
+os.makedirs(os.path.join(project_dir, "data", "dev_data_test_blurred"), exist_ok=True)
+
+img1_name = "DJI_20250424162351_0130_V.jpeg"
+img2_name = "DJI_20250424162352_0131_V.jpeg"
+
 # Path to your images
-img1_path = os.path.join(project_dir, "data", "dev_data_blurred", "DJI_20250424193048_0052_V.jpeg")
-img2_path = os.path.join(project_dir, "data", "dev_data_blurred", "DJI_20250424193049_0053_V.jpeg")
+img1_raw_path = os.path.join(project_dir, "data", "dev_data_test", img1_name)
+img2_raw_path = os.path.join(project_dir, "data", "dev_data_test", img2_name)
+# img3_raw_path = os.path.join(project_dir, "data", "dev_data_test", "DJI_20250424162354_0133_V.jpeg")
+
+results = triangulation.detect_barcodes(os.path.join(project_dir, "data", "dev_data_test"))
+roboflow.blur_except_rectangles(results, 
+                                os.path.join(project_dir, "data", "dev_data_test"),
+                                os.path.join(project_dir, "data", "dev_data_test_blurred"))
+
+# Path to your images
+img1_path = os.path.join(project_dir, "data", "dev_data_test_blurred", img1_name)
+img2_path = os.path.join(project_dir, "data", "dev_data_test_blurred", img2_name)
+# img3_path = os.path.join(project_dir, "data", "dev_data_test_blurred", "DJI_20250424162354_0133_V.jpeg")
 
 # Example camera intrinsic matrix (replace with your actual values)
 # Format: [[fx, 0, cx], [0, fy, cy], [0, 0, 1]]
@@ -50,12 +69,17 @@ intrinsic_matrix = np.array([
     [0, 0, 1]        # 0, 0, 1
 ])
 
+file_metadata_1 = Pic(img1_raw_path)
+file_metadata_2 = Pic(img2_raw_path)
+
 # Example GPS coordinates (latitude, longitude, altitude in meters)
 # Replace with your actual drone positions
-location1 = (49.0993716667, 12.18093, 483.34)  # San Francisco example
-location2 = (49.0993761111, 12.180945, 483.124)  # A short distance away
-
-triangulation = Triangulation()
+location1 = (float(file_metadata_1['GPSInfo']['latitude']),
+             float(file_metadata_1['GPSInfo']['longitude']),
+             float(file_metadata_1['GPSInfo']['altitude']))  # San Francisco example
+location2 = (float(file_metadata_2['GPSInfo']['latitude']),
+             float(file_metadata_2['GPSInfo']['longitude']),
+             float(file_metadata_2['GPSInfo']['altitude']))  # A short distance away
 
 # Load images
 img1, img2, gray1, gray2 = triangulation.load_images(img1_path, img2_path)
@@ -83,6 +107,11 @@ df_points = pd.DataFrame(points_lat_lon_alt, columns=['Latitude', 'Longitude', '
 
 # Export the results to CSV if needed
 df_points.to_csv("triangulated_points_gps.csv", index=False)
+
+df_selected = triangulation.extract_one_feature_per_rectangle(results[img1_name]['white_spaces'],
+                                                              pts1, points_lat_lon_alt, img1)
+
+df_selected.to_csv("triangulated_selected_points_gps.csv", index=False)
 
 # Print the number of triangulated points
 print(f"Successfully triangulated {len(points_3d)} 3D points")

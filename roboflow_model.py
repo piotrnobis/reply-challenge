@@ -110,6 +110,7 @@ def run_pipeline(model1, model2, image_path, output_folder, show_img):
         "white_spaces": white_space_boxes
     }
 
+
 def crop_image_by_detections(image, detections):
     cropped_images = []
     crop_boxes = []

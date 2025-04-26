@@ -1,9 +1,16 @@
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
+import pandas as pd
+from matplotlib.patches import Rectangle
+import random
+
 from mpl_toolkits.mplot3d import Axes3D
+from . import Roboflow
 
 class Triangulation:
+    def __init__(self):
+        self.roboflow = Roboflow()
     
     def load_images(self, img1_path, img2_path):
         """Load the two drone images."""
@@ -15,6 +22,7 @@ class Triangulation:
         gray2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
         
         return img1, img2, gray1, gray2
+
 
     def detect_and_match_features(self, gray1, gray2):
         """Detect SIFT features and match them between images."""
@@ -195,3 +203,87 @@ class Triangulation:
             lat_lon_alt[i] = [lat, lon, alt]
         
         return lat_lon_alt
+    
+
+    def detect_barcodes(self, image_dir):
+        model_id1 = "pile-of-crate-detection/12"
+        model_id2 = "white-sheet-spotter/2"
+        results = self.roboflow.run_inference_on_images(model_id1, model_id2, image_dir, show_img=False)
+
+        return results
+    
+
+    def extract_one_feature_per_rectangle(self, important_rectangles, pts1, points_lat_lon_alt, img1):
+        """
+        Extract one feature from each important rectangle and find its 3D lat/long/alt location.
+        
+        Args:
+            important_rectangles: List of lists in format [top_left_x, top_left_y, bottom_right_x, bottom_right_y]
+            pts1: Matched points from image 1 (Nx2 array)
+            points_lat_lon_alt: Nx3 array with [latitude, longitude, altitude] for each matched point
+            img1: The first image for visualization
+            
+        Returns:
+            DataFrame with lat/long/alt for one point per rectangle
+        """
+        # Initialize lists to store results
+        selected_pts = []
+        selected_rect_indices = []
+        selected_match_indices = []
+        selected_coords = []
+        
+        # For each rectangle, find points inside it
+        for i, rect in enumerate(important_rectangles):
+            x1, y1, x2, y2 = rect  # Format: [top_left_x, top_left_y, bottom_right_x, bottom_right_y]
+            
+            # Find keypoints inside this rectangle
+            inside_rect = []
+            
+            # Check each matched point
+            for j, pt in enumerate(pts1):
+                if (x1 <= pt[0] <= x2) and (y1 <= pt[1] <= y2):
+                    inside_rect.append(j)
+            
+            # If points are found inside the rectangle
+            if inside_rect:
+                # Randomly select one match from this rectangle
+                selected_idx = random.choice(inside_rect)
+                selected_match_indices.append(selected_idx)
+                selected_rect_indices.append(i)
+                selected_pts.append(pts1[selected_idx])
+                selected_coords.append(points_lat_lon_alt[selected_idx])
+        
+        # Create DataFrame with results
+        df_selected = pd.DataFrame({
+            'Rectangle_Index': selected_rect_indices,
+            'Match_Index': selected_match_indices,
+            'Point_X': [pt[0] for pt in selected_pts],
+            'Point_Y': [pt[1] for pt in selected_pts],
+            'Latitude': [coord[0] for coord in selected_coords],
+            'Longitude': [coord[1] for coord in selected_coords],
+            'Altitude': [coord[2] for coord in selected_coords]
+        })
+        
+        # Create a single visualization showing the selected points on the image
+        if len(selected_pts) > 0:
+            plt.figure(figsize=(12, 8))
+            plt.imshow(img1)
+            
+            # Draw all important rectangles
+            for i, rect in enumerate(important_rectangles):
+                x1, y1, x2, y2 = rect
+                width = x2 - x1
+                height = y2 - y1
+                plt.gca().add_patch(Rectangle((x1, y1), width, height, fill=False, edgecolor='blue', linewidth=2))
+                plt.text(x1, y1-10, f"Rect {i}", color='blue', fontsize=10)
+            
+            # Draw selected points
+            for i, pt in enumerate(selected_pts):
+                plt.scatter(pt[0], pt[1], c='red', s=80, marker='x')
+                rect_idx = selected_rect_indices[i]
+                plt.text(pt[0]+5, pt[1]+5, f"R{rect_idx}", color='red', fontsize=10)
+            
+            plt.title("Selected Feature Points (One per Rectangle)")
+            plt.show(block = True)
+        
+        return df_selected

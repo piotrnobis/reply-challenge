@@ -4,3 +4,4 @@ data/
 colmap_workspace/
 __pycache__
 .vscode/
+output/
