@@ -14,3 +14,6 @@ project_dir = current_file_dir
 colmap = Colmap(project_dir)
 colmap.estimate_relative_poses()
 colmap.iterate_images()
+colmap.run_model_converter()
+points, colors = colmap.print_3D_points(scale = 3)
+colmap.plot_pointcloud(points, colors)
