@@ -1,0 +1,5 @@
+.venv/
+data/
+.DS_Store
+colmap_workspace/
+__pycache__
