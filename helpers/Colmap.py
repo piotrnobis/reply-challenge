@@ -3,7 +3,7 @@ import cv2
 import subprocess
 
 import pycolmap
-
+import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Circle
 
@@ -39,6 +39,14 @@ class Colmap:
             "--database_path", self.database_path,
             "--image_path", self.image_dir,
             "--output_path", self.sparse_dir
+        ])
+
+    def run_model_converter(self):
+        subprocess.run([
+            "colmap", "model_converter",
+            "--input_path", os.path.join(self.sparse_dir, "0"),
+            "--output_path", self.workspace_dir,
+            "--output_type", "TXT"
         ])
 
     def estimate_relative_poses(self):
@@ -84,4 +92,4 @@ class Colmap:
                     plt.gca().add_patch(Circle((x, y), radius=1.5, color='lime', linewidth=0.5))
 
                 plt.axis("off")
-                plt.show()
+                plt.show(block=True)
