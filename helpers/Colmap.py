@@ -40,6 +40,7 @@ class Colmap:
             "--image_path", self.image_dir,
             "--output_path", self.sparse_dir
         ])
+        print("constructed!!")
 
     def estimate_relative_poses(self):
         self.run_feature_extraction()
@@ -47,7 +48,7 @@ class Colmap:
         self.run_sparse_reconstruction()
 
     def iterate_images(self):
-        model = pycolmap.Reconstruction(f"{self.sparse_dir}/0")
+        model = pycolmap.Reconstruction(os.path.join(self.sparse_dir,"0"))
 
         # Access cameras, images, and 3D points
         for image_id, image in model.images.items():

@@ -12,5 +12,5 @@ from helpers import Colmap
 current_file_dir = Path(__file__).resolve().parent
 project_dir = current_file_dir
 colmap = Colmap(project_dir)
-colmap.estimate_relative_poses()
+# colmap.estimate_relative_poses()
 colmap.iterate_images()
