@@ -1,5 +1,8 @@
 .venv/
 data/
+# Allow everything under data/dev_data_test/
+!data/dev_data_test/
+!data/dev_data_test/**
 .DS_Store
 colmap_workspace/
 __pycache__
